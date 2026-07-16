@@ -11,7 +11,8 @@ from dotenv import load_dotenv
 import pdfplumber
 import io
 
-load_dotenv()
+HF_TOKEN = os.getenv("HF_TOKEN")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 app = FastAPI(title="LC-MS Troubleshooting Assistant")
 
