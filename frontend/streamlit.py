@@ -78,9 +78,13 @@ if st.button("Analyze"):
 
 
     payload = {
-
-        "symptom": symptom
-
+    "symptom": symptom,
+    "instrument": instrument,
+    "analyte_type": analyte_type,
+    "ionization_mode": ionization_mode,
+    "column_type": column_type,
+    "mobile_phase": mobile_phase,
+    "recent_changes": recent_changes
     }
 
 
