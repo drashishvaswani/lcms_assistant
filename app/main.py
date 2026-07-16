@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 
 import pdfplumber
 import io
+import os
 
 HF_TOKEN = os.getenv("HF_TOKEN")
 DATABASE_URL = os.getenv("DATABASE_URL")
