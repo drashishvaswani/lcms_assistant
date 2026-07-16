@@ -21,7 +21,7 @@ if st.button("Analyze"):
     }
 
     response = requests.post(
-        "http://localhost:8000/troubleshoot",
+        "https://lcms-assistant.onrender.com",
         files={
             "file":(
                 uploaded_file.name,
