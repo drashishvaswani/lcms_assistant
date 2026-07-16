@@ -153,10 +153,7 @@ async def troubleshoot(
 
         for doc in documents:
 
-            kb_text += (
-                "\n\n"
-                + doc.text[:3000]
-            )
+            kb_text += "\n\n" + doc.text[:1000]
 
 
     finally:
@@ -186,18 +183,16 @@ async def troubleshoot(
 
 
 
-    summary = generate_scientist_summary(
+    print("STARTING LLM")
 
-        symptom=request.symptom,
+summary = generate_scientist_summary(
+    symptom=request.symptom,
+    problem_type=problem_type,
+    likely_causes=likely_causes,
+    document=kb_text
+)
 
-        problem_type=problem_type,
-
-        likely_causes=likely_causes,
-
-        document=kb_text
-
-    )
-
+print("LLM COMPLETED")
 
 
     return {
