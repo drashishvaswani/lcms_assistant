@@ -136,30 +136,23 @@ async def upload_document(
 
 @app.post("/troubleshoot")
 async def troubleshoot(
-        request: TroubleshootingRequest
+    request: TroubleshootingRequest
 ):
 
-
     db = SessionLocal()
-
 
     try:
 
         documents = db.query(Document).all()
 
-
         kb_text = ""
 
-
         for doc in documents:
-
             kb_text += "\n\n" + doc.text[:1000]
-
 
     finally:
 
         db.close()
-
 
 
     rule_result = classify_problem(
@@ -167,42 +160,28 @@ async def troubleshoot(
     )
 
 
-    problem_type = (
-        rule_result["problem_category"]
-    )
+    problem_type = rule_result["problem_category"]
 
+    likely_causes = rule_result["likely_causes"]
 
-    likely_causes = (
-        rule_result["likely_causes"]
-    )
-
-
-    follow_up_questions = (
-        rule_result["follow_up_questions"]
-    )
-
+    follow_up_questions = rule_result["follow_up_questions"]
 
 
     print("STARTING LLM")
 
-summary = generate_scientist_summary(
-    symptom=request.symptom,
-    problem_type=problem_type,
-    likely_causes=likely_causes,
-    document=kb_text
-)
+    summary = generate_scientist_summary(
+        symptom=request.symptom,
+        problem_type=problem_type,
+        likely_causes=likely_causes,
+        document=kb_text
+    )
 
-print("LLM COMPLETED")
+    print("LLM COMPLETED")
 
 
     return {
-
         "problem_category": problem_type,
-
         "likely_causes": likely_causes,
-
         "follow_up_questions": follow_up_questions,
-
         "scientist_summary": summary
-
     }
