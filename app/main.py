@@ -12,73 +12,122 @@ import pdfplumber
 import io
 import os
 
+
 HF_TOKEN = os.getenv("HF_TOKEN")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-app = FastAPI(title="LC-MS Troubleshooting Assistant")
+
+app = FastAPI(
+    title="LC-MS Troubleshooting Assistant"
+)
+
 
 Base.metadata.create_all(bind=engine)
 
 
 # -------------------------------------------------------
-# Helper
+# Extract PDF text
 # -------------------------------------------------------
 
 def extract_pdf_text(file_bytes):
+
     text = ""
 
-    with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
-        for page in pdf.pages:
-            page_text = page.extract_text()
-            if page_text:
-                text += page_text + "\n"
+    try:
+
+        with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
+
+            for page in pdf.pages:
+
+                page_text = page.extract_text()
+
+                if page_text:
+                    text += page_text + "\n"
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=400,
+            detail=f"PDF extraction failed: {str(e)}"
+        )
 
     return text
 
 
+
 # -------------------------------------------------------
-# Health
+# Health check
 # -------------------------------------------------------
 
 @app.get("/")
 def health():
+
     return {
         "status": "running",
         "application": "LC-MS Troubleshooting Assistant"
     }
 
 
+
 # -------------------------------------------------------
-# Upload Knowledge Base Document
+# Upload document
 # -------------------------------------------------------
 
 @app.post("/upload")
-async def upload_document(file: UploadFile = File(...)):
+async def upload_document(
+        file: UploadFile = File(...)
+):
 
     if not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files are supported.")
+
+        raise HTTPException(
+            status_code=400,
+            detail="Only PDF files are supported"
+        )
+
 
     file_bytes = await file.read()
 
-    document_text = extract_pdf_text(file_bytes)
+
+    document_text = extract_pdf_text(
+        file_bytes
+    )
+
 
     db = SessionLocal()
 
-    doc = Document(
-        filename=file.filename,
-        upload_date=datetime.now(),
-        text=document_text
-    )
 
-    db.add(doc)
-    db.commit()
+    try:
 
-    db.close()
+        doc = Document(
+            filename=file.filename,
+            upload_date=datetime.now(),
+            text=document_text
+        )
+
+
+        db.add(doc)
+
+        db.commit()
+
+
+    finally:
+
+        db.close()
+
+
 
     return {
-        "message": "Document uploaded successfully.",
-        "filename": file.filename
+
+        "message": "Document uploaded successfully",
+
+        "filename": file.filename,
+
+        "characters_extracted": len(document_text)
+
     }
+
+
 
 
 # -------------------------------------------------------
@@ -86,37 +135,79 @@ async def upload_document(file: UploadFile = File(...)):
 # -------------------------------------------------------
 
 @app.post("/troubleshoot")
-async def troubleshoot(request: TroubleshootingRequest):
+async def troubleshoot(
+        request: TroubleshootingRequest
+):
+
 
     db = SessionLocal()
 
-    documents = db.query(Document).all()
 
-    kb_text = ""
+    try:
 
-    for doc in documents:
-        kb_text += "\n\n" + doc.text[:3000]
+        documents = db.query(Document).all()
 
-    db.close()
 
-    rule_result = classify_problem(request.symptom)
+        kb_text = ""
 
-    problem_type = rule_result["problem_category"]
 
-    likely_causes = rule_result["likely_causes"]
+        for doc in documents:
 
-    follow_up_questions = rule_result["follow_up_questions"]
+            kb_text += (
+                "\n\n"
+                + doc.text[:3000]
+            )
 
-    summary = generate_scientist_summary(
-        symptom=request.symptom,
-        problem_type=problem_type,
-        likely_causes=likely_causes,
-        document=kb_text
+
+    finally:
+
+        db.close()
+
+
+
+    rule_result = classify_problem(
+        request.symptom
     )
 
+
+    problem_type = (
+        rule_result["problem_category"]
+    )
+
+
+    likely_causes = (
+        rule_result["likely_causes"]
+    )
+
+
+    follow_up_questions = (
+        rule_result["follow_up_questions"]
+    )
+
+
+
+    summary = generate_scientist_summary(
+
+        symptom=request.symptom,
+
+        problem_type=problem_type,
+
+        likely_causes=likely_causes,
+
+        document=kb_text
+
+    )
+
+
+
     return {
+
         "problem_category": problem_type,
+
         "likely_causes": likely_causes,
+
         "follow_up_questions": follow_up_questions,
+
         "scientist_summary": summary
+
     }
