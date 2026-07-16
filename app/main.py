@@ -1,0 +1,120 @@
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from app.rule_engine import classify_problem
+from app.llm_assistant import generate_scientist_summary
+from app.database import engine, SessionLocal
+from app.models import Base, Document
+from app.schemas import TroubleshootingRequest
+
+from datetime import datetime
+from dotenv import load_dotenv
+
+import pdfplumber
+import io
+
+load_dotenv()
+
+app = FastAPI(title="LC-MS Troubleshooting Assistant")
+
+Base.metadata.create_all(bind=engine)
+
+
+# -------------------------------------------------------
+# Helper
+# -------------------------------------------------------
+
+def extract_pdf_text(file_bytes):
+    text = ""
+
+    with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
+        for page in pdf.pages:
+            page_text = page.extract_text()
+            if page_text:
+                text += page_text + "\n"
+
+    return text
+
+
+# -------------------------------------------------------
+# Health
+# -------------------------------------------------------
+
+@app.get("/")
+def health():
+    return {
+        "status": "running",
+        "application": "LC-MS Troubleshooting Assistant"
+    }
+
+
+# -------------------------------------------------------
+# Upload Knowledge Base Document
+# -------------------------------------------------------
+
+@app.post("/upload")
+async def upload_document(file: UploadFile = File(...)):
+
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are supported.")
+
+    file_bytes = await file.read()
+
+    document_text = extract_pdf_text(file_bytes)
+
+    db = SessionLocal()
+
+    doc = Document(
+        filename=file.filename,
+        upload_date=datetime.now(),
+        text=document_text
+    )
+
+    db.add(doc)
+    db.commit()
+
+    db.close()
+
+    return {
+        "message": "Document uploaded successfully.",
+        "filename": file.filename
+    }
+
+
+# -------------------------------------------------------
+# Troubleshooting
+# -------------------------------------------------------
+
+@app.post("/troubleshoot")
+async def troubleshoot(request: TroubleshootingRequest):
+
+    db = SessionLocal()
+
+    documents = db.query(Document).all()
+
+    kb_text = ""
+
+    for doc in documents:
+        kb_text += "\n\n" + doc.text[:3000]
+
+    db.close()
+
+    rule_result = classify_problem(request.symptom)
+
+    problem_type = rule_result["problem_category"]
+
+    likely_causes = rule_result["likely_causes"]
+
+    follow_up_questions = rule_result["follow_up_questions"]
+
+    summary = generate_scientist_summary(
+        symptom=request.symptom,
+        problem_type=problem_type,
+        likely_causes=likely_causes,
+        document=kb_text
+    )
+
+    return {
+        "problem_category": problem_type,
+        "likely_causes": likely_causes,
+        "follow_up_questions": follow_up_questions,
+        "scientist_summary": summary
+    }
