@@ -1,0 +1,9 @@
+problem_type,symptom,likely_cause,recommended_check,severity
+low_sensitivity,low analyte response,dirty ion source,Clean ion source,High
+low_sensitivity,low analyte response,wrong mobile phase,Check mobile phase,Medium
+carryover,peak in blank,needle contamination,Optimize needle wash,High
+matrix_effect,low recovery,ion suppression,Perform matrix factor study,High
+peak_tailing,tailing peak,column contamination,Flush column,Medium
+high_backpressure,high pressure,blocked frit,Replace guard column,High
+noisy_baseline,noisy baseline,air bubbles,Prime pumps,Medium
+internal_standard_failure,low IS response,IS degradation,Prepare fresh IS,High
