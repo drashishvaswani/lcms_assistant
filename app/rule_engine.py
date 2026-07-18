@@ -68,7 +68,18 @@ def classify_problem(symptom: str) -> Dict:
     if any(keyword in symptom for keyword in [
         "carryover",
         "peak in blank",
-        "blank injection"
+        "blank injection",
+        "blank has peak",
+        "blank has signal",
+        "signal in blank",
+        "response in blank",
+        "analyte in blank",
+        "blank after high standard",
+        "after highest standard",
+        "after high standards",
+        "wash blank",
+        "carry over",
+        "ghost peak"
     ]):
 
         return {
